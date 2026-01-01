@@ -37,24 +37,30 @@ public class ClientHandler extends Thread{
                 //Wait for an object from the client
                 Object request = in.readObject();
                 
-                if(request instanceof User){
-                    User user = (User) request;
-                    System.out.println("Received registeration request for: "+ user.getUsername());
+                if (request instanceof String ){
+                    String command = (String)request;
+                    System.out.println("Command recieved: " + command);
                     
-                    //Call the database to save the user
-                    boolean success = dbManager.registerUser(user);
-                    
-                    //Send response back to the client
-                    if(success){
-                        out.writeObject("REGISTRATION_SUCCESS");
-                    }else{
-                        out.writeObject("REGISTRATION_FAILED");
+                    //Listening to User data object
+                    Object data = in.readObject();
+                    if(data instanceof User){
+                        User userData = (User) data;
+                        
+                        if (command.equals("LOGIN")){
+                            User authenticated = dbManager.loginUser(userData.getUsername(), userData.getPassword());
+                            if (authenticated != null){
+                                out.writeObject("LOGIN_SUCCESS");
+                                out.writeObject(authenticated);
+                            }else{
+                                out.writeObject("LOGIN_FAILED");
+                            }
+                        }else if (command.equals("SIGNUP")){
+                            boolean success = dbManager.registerUser(userData);
+                            out.writeObject(success ? "REGISTRATION_SUCCESS" : "REGISTRATION_FAILED");
+                        }
                     }
                     out.flush();
                 }
-                
-                //We can add more for login and Items.
-                //....................................
             }
         }catch(IOException | ClassNotFoundException e){
             System.out.println("Client disconnected: "+ socket.getInetAddress());

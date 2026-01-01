@@ -42,4 +42,24 @@ public class DatabaseManager {
             return false;
         }
     }
+    public User loginUser(String username, String password){
+        String query = "select * from users where username = ? and password = ?";
+        try(PreparedStatement pstmt = connection.prepareStatement(query)){
+            pstmt.setString(1, username);
+            pstmt.setString(2, password);
+            ResultSet rs = pstmt.executeQuery();
+            
+            if(rs.next()){
+                // This is just a user to carry the information and display it in the session.
+                User user = new User();
+                user.setUsername(rs.getString("username"));
+                user.setEmail(rs.getString("email"));
+                user.setBalance(rs.getDouble("balance"));
+                return user;
+            }
+        }catch(SQLException e){
+            e.printStackTrace();
+        }
+        return null;
+    }
 }
