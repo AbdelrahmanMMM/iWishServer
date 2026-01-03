@@ -5,6 +5,8 @@
 package com.iwish.db;
 import com.iwish.models.User;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 /**
  *
  * @author ITEi
@@ -62,4 +64,92 @@ public class DatabaseManager {
         }
         return null;
     }
+    
+    public List<User> searchUsers(String query, String myUsername){
+        List<User> results = new ArrayList<>();
+        String sql = "Select username, email from users where username like ? and username != ?";
+        try(PreparedStatement pstmt = connection.prepareStatement(sql)){
+            pstmt.setString(1, "%" + query + "%");
+            pstmt.setString(2, myUsername);
+            ResultSet rs = pstmt.executeQuery();
+            while(rs.next()){
+                User u = new User();
+                u.setUsername(rs.getString("username"));
+                u.setEmail(rs.getString("email"));
+                results.add(u);
+            }
+        }catch(SQLException e){e.printStackTrace();}
+        return results;
+    }
+    
+    //Send friend request
+    
+    public boolean sendFriendRequest(String sender, String receiver){
+        String sql = "insert into friendships (user_id, friend_id, status) values (?, ?, 'Pending')";
+        try(PreparedStatement pstmt = connection.prepareStatement(sql)){
+            pstmt.setString(1, sender);
+            pstmt.setString(2, receiver);
+            return pstmt.executeUpdate() > 0;
+        }catch(SQLException e){return false;}
+    }
+    
+    public List<String> getPendingRequests(String myUsername){
+        List<String> senders = new ArrayList<>();
+        //looking where we are the receiver and status is pending
+        String sql = "Select user_id from friendships where friend_id = ? and status = 'PENDING'";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)){
+            pstmt.setString(1, myUsername);
+            ResultSet rs = pstmt.executeQuery();
+            while(rs.next()){
+                senders.add(rs.getString("user_id"));
+            }
+        }catch(SQLException e){e.printStackTrace();}
+        return senders;
+    }
+    
+    public boolean updateFriendshipStatus(String sender, String receiver, String newStatus){
+        String sql = "Update friendships set status = ? where user_id = ? and friend_id = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)){
+            pstmt.setString(1, newStatus);
+            pstmt.setString(2, sender);
+            pstmt.setString(3, receiver);
+            return pstmt.executeUpdate() >0;
+        }catch(SQLException e){return false;}
+    }
+    
+    public boolean deleteFriendship(String sender, String receiver){
+        String sql = "Delete from friendships where user_id = ? and friend_id = ?";
+        try(PreparedStatement pstmt = connection.prepareStatement(sql)){
+            pstmt.setString(1, sender);
+            pstmt.setString(2, receiver);
+            return pstmt.executeUpdate()>0;
+        }catch(SQLException e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    public List<String> getAcceptedFriends(String username){
+        List<String> friends = new ArrayList<>();
+        //This query finds your currently friends
+        String query = "select friend_id from friendships where user_id = ? and status = 'ACCEPTED' " + 
+                       " Union " +
+                       "select user_id from friendships where friend_id = ? and status = 'ACCEPTED' ";
+        try (PreparedStatement pstmt = connection.prepareStatement(query)){
+            
+            pstmt.setString(1, username);
+            pstmt.setString(2, username);
+            
+            try (ResultSet rs = pstmt.executeQuery()){
+                while(rs.next()){
+                    friends.add(rs.getString(1));
+                }
+            }
+        }catch(SQLException e){
+            System.err.println("Database error in getAcceptedFriends: " + e.getMessage());
+        }
+        return friends;
+    }
+    
+    
 }
